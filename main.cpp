@@ -46,17 +46,27 @@ void Board::printBoard() {
             cout << endl;
         }
     }
+    cout << endl;
+}
+
+void Board::setCell(unsigned i, checker ch) {
+    board[i].setChecker(ch);
 }
 
 bool Board::checkCellEmpty(unsigned i) {
     return board[i].getChecker() == EMPTY;
 }
 
-void openVertex(unsigned i, unsigned j, Board b) {
+Board openVertex(unsigned i, unsigned j, Board b) {
+    Board newBoard(b);
 
+    newBoard.setCell(i, b.getBoard()[j].getChecker());
+    newBoard.setCell(j, b.getBoard()[i].getChecker());
+
+    return newBoard;
 }
 
-void formVertex(Board b, void (*callback)(unsigned, unsigned, Board)) {
+void formVertex(Board b, const function<void(unsigned, unsigned, Board)> callback) {
     vector<Cell> board = b.getBoard();
     for (unsigned i = 0; i < board.size(); i++) {
         checker ch = board[i].getChecker();
@@ -148,10 +158,16 @@ int main() {
             EMPTY,
     });
 
-    formVertex(stateSpace[0], &openVertex);
+    formVertex(stateSpace[0], [&](unsigned i, unsigned j, Board b){
+        Board board = openVertex(i, j, b);
+        stateSpace.emplace_back(board);
+    });
 
     for (Board b : stateSpace) {
         b.printBoard();
     }
+
+    stateSpace.clear();
+
     return 0;
 }

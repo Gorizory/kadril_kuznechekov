@@ -18,9 +18,9 @@ private:
     checker ch;
 
 public:
-    explicit Cell(checker _ch);
+    explicit Cell(checker);
 
-    void setChecker(checker _ch);
+    void setChecker(checker);
 
     checker getChecker();
 };
@@ -30,7 +30,7 @@ private:
     vector<Cell> board;
 
 public:
-    explicit Board(vector<checker> _board);
+    explicit Board(vector<checker>);
 
     ~Board();
 
@@ -38,11 +38,13 @@ public:
 
     void printBoard();
 
-    bool checkCellEmpty(unsigned i);
+    bool checkCellEmpty(unsigned);
+
+    void setCell(unsigned, checker);
 };
 
-void openVertex(unsigned i, unsigned j, Board b);
+Board openVertex(unsigned, unsigned, Board);
 
-void formVertex(Board b, void (*callback)(unsigned, unsigned, Board));
+void formVertex(Board, function<void(unsigned, unsigned, Board)>);
 
 #endif //KADRIL_KUZNECHEKOV_HEADER_H
