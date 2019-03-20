@@ -12,14 +12,32 @@ checker Cell::getChecker() {
     return ch;
 }
 
-Board::Board(vector<checker> _board) {
+Board::Board(vector<checker> _board, vector<checker>* _end) {
     for (checker ch : _board) {
         board.emplace_back(ch);
     }
+    end = _end;
+    g = 0;
+    h = calcH(board, end);
+    f = g + h;
 }
 
 Board::~Board() {
     board.clear();
+}
+
+void Board::updateF() {
+    g++;
+    h = calcH(board, end);
+    f = g + h;
+}
+
+unsigned Board::getF() {
+    return f;
+}
+
+unsigned Board::getH() {
+    return f;
 }
 
 vector<Cell> Board::getBoard() {
@@ -57,16 +75,30 @@ bool Board::checkCellEmpty(unsigned i) {
     return board[i].getChecker() == EMPTY;
 }
 
-Board openVertex(unsigned i, unsigned j, Board b) {
+unsigned calcH(vector<Cell> current, vector<checker>* end) {
+    unsigned h = 0;
+
+    for (unsigned i = 0; i < current.size(); i++) {
+        if (current[i].getChecker() != (*end)[i]) {
+            h++;
+        }
+    }
+
+    return h;
+}
+
+Board formVertex(unsigned i, unsigned j, Board b) {
     Board newBoard(b);
 
     newBoard.setCell(i, b.getBoard()[j].getChecker());
     newBoard.setCell(j, b.getBoard()[i].getChecker());
 
+    newBoard.updateF();
+
     return newBoard;
 }
 
-void formVertex(Board b, const function<void(unsigned, unsigned, Board)> callback) {
+void formVertexes(Board b, const function<void(unsigned, unsigned, Board)> callback) {
     vector<Cell> board = b.getBoard();
     for (unsigned i = 0; i < board.size(); i++) {
         checker ch = board[i].getChecker();
@@ -77,13 +109,27 @@ void formVertex(Board b, const function<void(unsigned, unsigned, Board)> callbac
                     callback(i, i - 8, b);
                 }
             }
+            if (i / 8 < 8) {
+                if (b.checkCellEmpty(i + 8)) {
+                    callback(i, i + 8, b);
+                }
+            }
+            if (i % 8 > 0) {
+                if (b.checkCellEmpty(i - 1)) {
+                    callback(i, i - 1, b);
+                }
+            }
+            if (i % 8 < 7) {
+                if (b.checkCellEmpty(i + 1)) {
+                    callback(i, i + 1, b);
+                }
+            }
         }
     }
 }
 
 int main() {
-    vector<Board> stateSpace;
-    stateSpace.emplace_back(vector<checker>{
+    vector<checker> start {
             // 1st row
             WHITE,
             WHITE,
@@ -156,18 +202,135 @@ int main() {
             EMPTY,
             EMPTY,
             EMPTY,
-    });
+    };
 
-    formVertex(stateSpace[0], [&](unsigned i, unsigned j, Board b){
-        Board board = openVertex(i, j, b);
-        stateSpace.emplace_back(board);
-    });
+    vector<checker> end {
+            // 1st row
+            BLACK,
+            BLACK,
+            BLACK,
+            BLACK,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 2nd row
+            BLACK,
+            BLACK,
+            BLACK,
+            BLACK,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 3rd row
+            BLACK,
+            BLACK,
+            BLACK,
+            BLACK,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 4th row
+            BLACK,
+            BLACK,
+            BLACK,
+            EMPTY,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 5th row
+            BLACK,
+            BLACK,
+            BLACK,
+            WHITE,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 6th row
+            BLACK,
+            BLACK,
+            BLACK,
+            WHITE,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 7th row
+            BLACK,
+            BLACK,
+            BLACK,
+            WHITE,
+            WHITE,
+            WHITE,
+            WHITE,
+            EMPTY,
+            // 8th row
+            EMPTY,
+            EMPTY,
+            EMPTY,
+            EMPTY,
+            EMPTY,
+            EMPTY,
+            EMPTY,
+            EMPTY,
+    };
 
-    for (Board b : stateSpace) {
+    vector<Board> open;
+    vector<Board> close;
+    open.emplace_back(start, &end);
+
+    while (true) {
+        Board* x = nullptr;
+
+        unsigned index = 0;
+
+        for (unsigned i = 0; i < open.size(); i++) {
+            Board* b = &open[i];
+
+            if (b->getH() == 0) {
+                x = b;
+                index = i;
+                break;
+            }
+            if (!x) {
+                x = b;
+                index = i;
+                continue;
+            }
+
+            if (x->getF() > b->getF()) {
+                index = i;
+                x = b;
+            }
+        }
+
+        if (x != nullptr) {
+            x = new Board(*x);
+            open.erase(open.begin() + index);
+
+            if (x->getH() == 0) {
+                break;
+            }
+
+            formVertexes(*x, [&](unsigned i, unsigned j, Board b){
+                Board board = formVertex(i, j, b);
+                open.emplace_back(board);
+            });
+
+            x->printBoard();
+        }
+    }
+
+    for (Board b : open) {
         b.printBoard();
     }
 
-    stateSpace.clear();
+    open.clear();
+    close.clear();
 
     return 0;
 }

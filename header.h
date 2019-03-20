@@ -28,13 +28,23 @@ public:
 class Board {
 private:
     vector<Cell> board;
+    vector<checker>* end;
+    unsigned g;
+    unsigned h;
+    unsigned f;
 
 public:
-    explicit Board(vector<checker>);
+    Board(vector<checker>, vector<checker>*);
 
     ~Board();
 
     vector<Cell> getBoard();
+
+    void updateF();
+
+    unsigned getF();
+
+    unsigned getH();
 
     void printBoard();
 
@@ -43,8 +53,10 @@ public:
     void setCell(unsigned, checker);
 };
 
-Board openVertex(unsigned, unsigned, Board);
+Board formVertex(unsigned, unsigned, Board);
 
-void formVertex(Board, function<void(unsigned, unsigned, Board)>);
+void formVertexes(Board, function<void(unsigned, unsigned, Board)>);
+
+unsigned calcH(vector<Cell>, vector<checker>*);
 
 #endif //KADRIL_KUZNECHEKOV_HEADER_H
