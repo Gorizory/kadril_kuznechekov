@@ -41,7 +41,7 @@ public:
     bool checkCellEmpty(unsigned i);
 };
 
-void openVertex(int i, int j, Board b);
+void openVertex(unsigned i, unsigned j, Board b);
 
 void formVertex(Board b, void (*callback)(unsigned, unsigned, Board));
 

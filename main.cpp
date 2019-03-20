@@ -52,7 +52,7 @@ bool Board::checkCellEmpty(unsigned i) {
     return board[i].getChecker() == EMPTY;
 }
 
-void openVertex(int i, int j, Board b) {
+void openVertex(unsigned i, unsigned j, Board b) {
 
 }
 
@@ -148,7 +148,7 @@ int main() {
             EMPTY,
     });
 
-    formVertex(stateSpace[0], openVertex);
+    formVertex(stateSpace[0], &openVertex);
 
     for (Board b : stateSpace) {
         b.printBoard();
