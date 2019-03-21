@@ -26,6 +26,17 @@ Board::~Board() {
     board.clear();
 }
 
+bool Board::operator==(Board b) {
+    bool equal = true;
+    for (unsigned i = 0; i < board.size(); i++) {
+        if (board[i].getChecker() == b.board[i].getChecker()) {
+            equal = false;
+            break;
+        }
+    }
+    return equal;
+}
+
 void Board::updateF() {
     g++;
     h = calcH(board, end);
@@ -79,9 +90,32 @@ unsigned calcH(vector<Cell> current, vector<checker>* end) {
     unsigned h = 0;
 
     for (unsigned i = 0; i < current.size(); i++) {
-        if (current[i].getChecker() != (*end)[i]) {
-            h++;
+        int minDist = 1024;
+        checker chCur = current[i].getChecker();
+
+        for (unsigned j = 0; j < end->size(); j++) {
+            checker chEnd = end->at(j);
+            int dist = [i, j]()->int {
+                int ix = i % 8;
+                int iy = i / 8;
+                int jx = j % 8;
+                int jy = j / 8;
+
+                int diffX = ix - jx;
+                diffX = diffX > 0 ? diffX : -diffX;
+
+                int diffY = iy - jy;
+                diffY = diffY > 0 ? diffY : -diffY;
+
+                return diffX + diffY;
+            }();
+
+            if (chCur == chEnd && dist < minDist) {
+                minDist = dist;
+            }
         }
+
+        h += minDist;
     }
 
     return h;
@@ -316,12 +350,28 @@ int main() {
                 break;
             }
 
+            x->printBoard();
+            close.emplace_back(*x);
+
             formVertexes(*x, [&](unsigned i, unsigned j, Board b){
                 Board board = formVertex(i, j, b);
-                open.emplace_back(board);
+                bool doNotOpen = false;
+                for (Board _b : open) {
+                    if (_b == board) {
+                        doNotOpen = true;
+                        break;
+                    }
+                }
+                for (Board _b : close) {
+                    if (_b == board) {
+                        doNotOpen = true;
+                        break;
+                    }
+                }
+                if (!doNotOpen) {
+                    open.emplace_back(board);
+                }
             });
-
-            x->printBoard();
         }
     }
 

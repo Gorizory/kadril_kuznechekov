@@ -38,6 +38,8 @@ public:
 
     ~Board();
 
+    bool operator==(Board);
+
     vector<Cell> getBoard();
 
     void updateF();
