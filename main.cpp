@@ -138,6 +138,7 @@ void formVertexes(Board b, const function<void(unsigned, unsigned, Board)> callb
         checker ch = board[i].getChecker();
 
         if (ch != EMPTY) {
+            // step
             if (i / 8 > 0) {
                 if (b.checkCellEmpty(i - 8)) {
                     callback(i, i - 8, b);
@@ -156,6 +157,27 @@ void formVertexes(Board b, const function<void(unsigned, unsigned, Board)> callb
             if (i % 8 < 7) {
                 if (b.checkCellEmpty(i + 1)) {
                     callback(i, i + 1, b);
+                }
+            }
+            // jump
+            if (i / 8 > 1) {
+                if (b.checkCellEmpty(i - 16)) {
+                    callback(i, i - 16, b);
+                }
+            }
+            if (i / 8 < 7) {
+                if (b.checkCellEmpty(i + 16)) {
+                    callback(i, i + 16, b);
+                }
+            }
+            if (i % 8 > 1) {
+                if (b.checkCellEmpty(i - 2)) {
+                    callback(i, i - 2, b);
+                }
+            }
+            if (i % 8 < 6) {
+                if (b.checkCellEmpty(i + 2)) {
+                    callback(i, i + 2, b);
                 }
             }
         }
