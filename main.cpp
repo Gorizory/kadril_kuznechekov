@@ -29,7 +29,7 @@ Board::~Board() {
 bool Board::operator==(Board b) {
     bool equal = true;
     for (unsigned i = 0; i < board.size(); i++) {
-        if (board[i].getChecker() == b.board[i].getChecker()) {
+        if (board[i].getChecker() != b.board[i].getChecker()) {
             equal = false;
             break;
         }
@@ -48,11 +48,15 @@ unsigned Board::getF() {
 }
 
 unsigned Board::getH() {
-    return f;
+    return h;
 }
 
 vector<Cell> Board::getBoard() {
     return board;
+}
+
+vector<checker>* Board::getEnd() {
+    return end;
 }
 
 void Board::printBoard() {
@@ -89,36 +93,51 @@ bool Board::checkCellEmpty(unsigned i) {
 unsigned calcH(vector<Cell> current, vector<checker>* end) {
     unsigned h = 0;
 
-    for (unsigned i = 0; i < current.size(); i++) {
-        int minDist = 1024;
-        checker chCur = current[i].getChecker();
-
-        for (unsigned j = 0; j < end->size(); j++) {
-            checker chEnd = end->at(j);
-            int dist = [i, j]()->int {
-                int ix = i % 8;
-                int iy = i / 8;
-                int jx = j % 8;
-                int jy = j / 8;
-
-                int diffX = ix - jx;
-                diffX = diffX > 0 ? diffX : -diffX;
-
-                int diffY = iy - jy;
-                diffY = diffY > 0 ? diffY : -diffY;
-
-                return diffX + diffY;
-            }();
-
-            if (chCur == chEnd && dist < minDist) {
-                minDist = dist;
-            }
-        }
-
-        h += minDist;
-    }
+//    for (unsigned i = 0; i < current.size(); i++) {
+//        if (current[i].getChecker() != end->at(i)) {
+//            h += 1;
+//        }
+//    }
+//    for (unsigned i = 0; i < current.size(); i++) {
+//        int minDist = 1024;
+//        checker chCur = current[i].getChecker();
+//
+//        for (unsigned j = 0; j < end->size(); j++) {
+//            checker chEnd = end->at(j);
+//            int dist = [i, j]()->int {
+//                int ix = i % 8;
+//                int iy = i / 8;
+//                int jx = j % 8;
+//                int jy = j / 8;
+//
+//                int diffX = ix - jx;
+//                diffX = diffX > 0 ? diffX : -diffX;
+//
+//                int diffY = iy - jy;
+//                diffY = diffY > 0 ? diffY : -diffY;
+//
+//                return diffX + diffY;
+//            }();
+//
+//            if (chCur == chEnd && dist < minDist) {
+//                minDist = dist;
+//            }
+//        }
+//
+//        h += minDist;
+//    }
 
     return h;
+}
+
+bool checkEnd(Board* board) {
+    for (unsigned i = 0; i < board->getBoard().size(); i++) {
+        if (board->getBoard()[i].getChecker() != board->getEnd()->at(i)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 Board formVertex(unsigned i, unsigned j, Board b) {
@@ -134,6 +153,11 @@ Board formVertex(unsigned i, unsigned j, Board b) {
 
 void formVertexes(Board b, const function<void(unsigned, unsigned, Board)> callback) {
     vector<Cell> board = b.getBoard();
+
+    auto canJump = [](checker c1, checker c2)->bool{
+        return c1 != c2 && c2 != EMPTY;
+    };
+
     for (unsigned i = 0; i < board.size(); i++) {
         checker ch = board[i].getChecker();
 
@@ -161,22 +185,22 @@ void formVertexes(Board b, const function<void(unsigned, unsigned, Board)> callb
             }
             // jump
             if (i / 8 > 1) {
-                if (b.checkCellEmpty(i - 16)) {
+                if (b.checkCellEmpty(i - 16) && canJump(ch, b.getBoard()[i - 8].getChecker())) {
                     callback(i, i - 16, b);
                 }
             }
             if (i / 8 < 7) {
-                if (b.checkCellEmpty(i + 16)) {
+                if (b.checkCellEmpty(i + 16) && canJump(ch, b.getBoard()[i + 8].getChecker())) {
                     callback(i, i + 16, b);
                 }
             }
             if (i % 8 > 1) {
-                if (b.checkCellEmpty(i - 2)) {
+                if (b.checkCellEmpty(i - 2) && canJump(ch, b.getBoard()[i - 1].getChecker())) {
                     callback(i, i - 2, b);
                 }
             }
             if (i % 8 < 6) {
-                if (b.checkCellEmpty(i + 2)) {
+                if (b.checkCellEmpty(i + 2) && canJump(ch, b.getBoard()[i + 1].getChecker())) {
                     callback(i, i + 2, b);
                 }
             }
@@ -347,7 +371,7 @@ int main() {
         for (unsigned i = 0; i < open.size(); i++) {
             Board* b = &open[i];
 
-            if (b->getH() == 0) {
+            if (checkEnd(b)) {
                 x = b;
                 index = i;
                 break;
@@ -368,12 +392,12 @@ int main() {
             x = new Board(*x);
             open.erase(open.begin() + index);
 
-            if (x->getH() == 0) {
-                break;
-            }
-
             x->printBoard();
             close.emplace_back(*x);
+
+            if (checkEnd(x)) {
+                break;
+            }
 
             formVertexes(*x, [&](unsigned i, unsigned j, Board b){
                 Board board = formVertex(i, j, b);
@@ -394,6 +418,8 @@ int main() {
                     open.emplace_back(board);
                 }
             });
+        } else {
+            return 1;
         }
     }
 

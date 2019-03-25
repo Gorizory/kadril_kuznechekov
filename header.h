@@ -42,6 +42,8 @@ public:
 
     vector<Cell> getBoard();
 
+    vector<checker>* getEnd();
+
     void updateF();
 
     unsigned getF();
