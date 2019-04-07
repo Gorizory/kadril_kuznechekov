@@ -34,6 +34,10 @@ private:
     unsigned f;
 
 public:
+    checker current;
+
+    Board* previous = nullptr;
+
     Board(vector<checker>, vector<checker>*);
 
     ~Board();
@@ -59,7 +63,9 @@ public:
 
 Board formVertex(unsigned, unsigned, Board);
 
-void formVertexes(Board, function<void(unsigned, unsigned, Board)>);
+void addVertex(unsigned, unsigned, Board, vector<Board>*, vector<Board>*);
+
+void formVertexes(Board, vector<Board>*, vector<Board>*);
 
 unsigned calcH(vector<Cell>, vector<checker>*);
 
