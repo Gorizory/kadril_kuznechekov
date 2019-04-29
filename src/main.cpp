@@ -14,15 +14,14 @@ checker Cell::getChecker() {
     return ch;
 }
 
-Board::Board(vector<checker> _board, vector<checker>* _end) {
+Board::Board(vector<checker> _board, vector<checker> *_end) {
     for (checker ch : _board) {
         board.emplace_back(ch);
     }
     end = _end;
     g = 0;
-    h = calcH(board, end);
+    h = calcH();
     f = g + h;
-    current = WHITE;
 }
 
 Board::~Board() {
@@ -42,7 +41,7 @@ bool Board::operator==(Board b) {
 
 void Board::updateF() {
     g++;
-    h = calcH(board, end);
+    h = calcH();
     f = g + h;
 }
 
@@ -58,7 +57,7 @@ vector<Cell> Board::getBoard() {
     return board;
 }
 
-vector<checker>* Board::getEnd() {
+vector<checker> *Board::getEnd() {
     return end;
 }
 
@@ -93,9 +92,45 @@ bool Board::checkCellEmpty(unsigned i) {
     return board[i].getChecker() == EMPTY;
 }
 
-unsigned calcH(vector<Cell> current, vector<checker>* end) {
-    unsigned h = 0;
+unsigned Board::calcH() {
+    unsigned newH = 0;
+    if (previous == nullptr) {
+        return 0;
+    }
+    unsigned centerRow = N / 2 - 1;
+    int move1= -1, move2 = -1;
 
+    for (unsigned i = 0; i < board.size(); i++) {
+        if (board[i].getChecker() != previous->getBoard()[i].getChecker()) {
+            if (move1 < 0) {
+                move1 = i;
+            } else {
+                move2 = i;
+            }
+        }
+    }
+
+    for (unsigned j = 0; j < N; j++) {
+        for (unsigned i = 0; i < N; i++) {
+            if (board[i *  N + j].getChecker() != end->at(i *  N + j)) {
+                if (i == N - 1 || j == N - 1) {
+                    newH += 5000;
+                } else {
+                    newH += N;
+                }
+            }
+        }
+    }
+
+    if (move1 / N != move2 / N) {
+        if (move1 % N != centerRow) {
+            newH += 5000;
+        } else {
+            newH += 500;
+        }
+    }
+
+//    cout << newH << " " << move1 << " " << move2 << endl;
 //    unsigned rowWithEmptyChecker = [&]()->unsigned{
 //        for (unsigned i = 0; i < N - 1; i++) {
 //            unsigned num = 0;
@@ -124,33 +159,27 @@ unsigned calcH(vector<Cell> current, vector<checker>* end) {
 //        }
 //    }
 
-    for (unsigned i = 0; i < current.size(); i++) {
-        checker ch = current[i].getChecker();
-
-        if (ch != end->at(i) && end->at(i) != EMPTY) {
-            if (ch == BLACK) {
-                unsigned ip = i % N;
-                unsigned jp = i / N;
-                h += ip > jp ? ip : jp;
-            }
-            if (ch == WHITE) {
-                unsigned col = i % N;
-                unsigned row = i / N;
-                unsigned ip = col < N - 1 ? N - 1 - col : 1;
-                unsigned jp = row < N - 1 ? N - 1 - row : 1;
-                h += ip > jp ? ip : jp;
-            }
-            if (ch != EMPTY && (i / N == N - 1 || i % N == N - 1)) {
-                unsigned ip = N - i % N;
-                unsigned jp = N - i / N;
-                h += ip > jp ? ip : jp;
-            }
-        }
-    }
-
 //    for (unsigned i = 0; i < current.size(); i++) {
-//        if (current[i].getChecker() != end->at(i)) {
-//            h += N;
+//        checker ch = current[i].getChecker();
+//
+//        if (ch != end->at(i) && end->at(i) != EMPTY) {
+//            if (ch == BLACK) {
+//                unsigned ip = i % N;
+//                unsigned jp = i / N;
+//                h += ip > jp ? ip : jp;
+//            }
+//            if (ch == WHITE) {
+//                unsigned col = i % N;
+//                unsigned row = i / N;
+//                unsigned ip = col < N - 1 ? N - 1 - col : 1;
+//                unsigned jp = row < N - 1 ? N - 1 - row : 1;
+//                h += ip > jp ? ip : jp;
+//            }
+//            if (ch != EMPTY && (i / N == N - 1 || i % N == N - 1)) {
+//                unsigned ip = N - i % N;
+//                unsigned jp = N - i / N;
+//                h += ip > jp ? ip : 1000;
+//            }
 //        }
 //    }
 
@@ -183,10 +212,10 @@ unsigned calcH(vector<Cell> current, vector<checker>* end) {
 //        h += minDist;
 //    }
 
-    return h;
+    return newH;
 }
 
-bool checkEnd(Board* board) {
+bool checkEnd(Board *board) {
     for (unsigned i = 0; i < board->getBoard().size(); i++) {
         if (board->getBoard()[i].getChecker() != board->getEnd()->at(i)) {
             return false;
@@ -202,14 +231,13 @@ Board formVertex(unsigned i, unsigned j, Board b) {
     newBoard.setCell(i, b.getBoard()[j].getChecker());
     newBoard.setCell(j, b.getBoard()[i].getChecker());
 
-    newBoard.updateF();
-    newBoard.current = b.current == WHITE ? BLACK : WHITE;
     newBoard.previous = &b;
+    newBoard.updateF();
 
     return newBoard;
 }
 
-void addVertex(unsigned i, unsigned j, const Board b, vector<Board>* open, vector<Board>* close) {
+void addVertex(unsigned i, unsigned j, const Board b, vector<Board>* boards, vector<Board> *open, vector<Board> *close) {
     Board board = formVertex(i, j, b);
     bool shouldOpen = true;
     for (Board _b : *open) {
@@ -225,62 +253,61 @@ void addVertex(unsigned i, unsigned j, const Board b, vector<Board>* open, vecto
         }
     }
     if (shouldOpen) {
-        // board.printBoard();
         open->emplace_back(board);
     }
 }
 
-void formVertexes(Board b, vector<Board> *open, vector<Board> *close) {
+void formVertexes(Board b, vector<Board> *boards, vector<Board> *open, vector<Board> *close) {
     vector<Cell> board = b.getBoard();
 
-    auto canJump = [](checker c1, checker c2)->bool{
+    auto canJump = [](checker c1, checker c2) -> bool {
         return c1 != c2 && c2 != EMPTY;
     };
 
     for (unsigned i = 0; i < board.size(); i++) {
         checker ch = board[i].getChecker();
 
-        if (ch != EMPTY && ch == b.current) {
+        if (ch != EMPTY) {
             // step
-            if (i / N > 0 && ch == WHITE) {
+            if (i / N > 0 && ch == BLACK) {
                 if (b.checkCellEmpty(i - N)) {
-                    addVertex(i, i - N, b, open, close);
+                    addVertex(i, i - N, b, boards, open, close);
                 }
             }
-            if (i / N < N - 1 && ch == BLACK) {
+            if (i / N < N - 1 && ch == WHITE) {
                 if (b.checkCellEmpty(i + N)) {
-                    addVertex(i, i + N, b, open, close);
+                    addVertex(i, i + N, b, boards, open, close);
                 }
             }
             if (i % N > 0 && ch == BLACK) {
                 if (b.checkCellEmpty(i - 1)) {
-                    addVertex(i, i - 1, b, open, close);
+                    addVertex(i, i - 1, b, boards, open, close);
                 }
             }
             if (i % N < N - 1 && ch == WHITE) {
                 if (b.checkCellEmpty(i + 1)) {
-                    addVertex(i, i + 1, b, open, close);
+                    addVertex(i, i + 1, b, boards, open, close);
                 }
             }
             // jump
             if (i / N > 1) {
                 if (b.checkCellEmpty(i - 2 * N) && canJump(ch, b.getBoard()[i - N].getChecker())) {
-                    addVertex(i, i - 2 * N, b, open, close);
+                    addVertex(i, i - 2 * N, b, boards, open, close);
                 }
             }
             if (i / N < N - 2) {
                 if (b.checkCellEmpty(i + 2 * N) && canJump(ch, b.getBoard()[i + N].getChecker())) {
-                    addVertex(i, i + 2 * N, b, open, close);
+                    addVertex(i, i + 2 * N, b, boards, open, close);
                 }
             }
             if (i % N > 1) {
                 if (b.checkCellEmpty(i - 2) && canJump(ch, b.getBoard()[i - 1].getChecker())) {
-                    addVertex(i, i - 2, b, open, close);
+                    addVertex(i, i - 2, b, boards, open, close);
                 }
             }
             if (i % N < N - 2) {
                 if (b.checkCellEmpty(i + 2) && canJump(ch, b.getBoard()[i + 1].getChecker())) {
-                    addVertex(i, i + 2, b, open, close);
+                    addVertex(i, i + 2, b, boards, open, close);
                 }
             }
         }
@@ -440,7 +467,7 @@ int main() {
     };
      */
 
-    vector<checker> start {
+    vector<checker> start{
             // 1st row
             WHITE,
             WHITE,
@@ -485,7 +512,7 @@ int main() {
             EMPTY
     };
 
-    vector<checker> end {
+    vector<checker> end{
             // 1st row
             BLACK,
             BLACK,
@@ -530,19 +557,21 @@ int main() {
             EMPTY,
     };
 
+    vector<Board> boards;
     vector<Board> open;
     vector<Board> close;
-    open.emplace_back(start, &end);
+    boards.emplace_back(start, &end);
+    open.emplace_back(Board (boards[0]));
 
     unsigned iteration = 0;
 
     while (true) {
-        Board* x = nullptr;
+        Board *x = nullptr;
 
         unsigned index = 0;
 
         for (unsigned i = 0; i < open.size(); i++) {
-            Board* b = &open[i];
+            Board *b = &open[i];
 
             if (checkEnd(b)) {
                 x = b;
@@ -562,39 +591,40 @@ int main() {
         }
 
         iteration++;
-        cout << open.size() << endl;
 
         if (x != nullptr) {
             x = new Board(*x);
             open.erase(open.begin() + index);
 
             close.emplace_back(*x);
-            x->printBoard();
+            // x->printBoard();
 
             if (checkEnd(x)) {
                 break;
             }
 
-            formVertexes(*x, &open, &close);
+            formVertexes(*x, &boards, &open, &close);
         } else {
             cout << "No open vertexes" << endl;
             return 1;
         }
     }
 
-    cout << "result" << endl;
+    cout << "Result:" << endl;
 
     Board *x = &close[close.size() - 1];
+    vector<Board*> result;
+    result.emplace_back(x);
 
     while (x != nullptr) {
         x->printBoard();
+        result.emplace_back(x);
         x = x->previous;
     }
 
-    cout << iteration << " iterations" << endl;
+    cout << result.size() << " steps" << endl;
 
-    open.clear();
-    close.clear();
+    cout << iteration << " iterations" << endl;
 
     return 0;
 }

@@ -34,11 +34,12 @@ private:
     unsigned f;
 
 public:
-    checker current;
 
     Board* previous = nullptr;
 
     Board(vector<checker>, vector<checker>*);
+
+    Board(Board*);
 
     ~Board();
 
@@ -50,6 +51,8 @@ public:
 
     void updateF();
 
+    unsigned getG();
+
     unsigned getF();
 
     unsigned getH();
@@ -59,14 +62,14 @@ public:
     bool checkCellEmpty(unsigned);
 
     void setCell(unsigned, checker);
+
+    unsigned calcH();
 };
 
 Board formVertex(unsigned, unsigned, Board);
 
-void addVertex(unsigned, unsigned, Board, vector<Board>*, vector<Board>*);
+void addVertex(unsigned, unsigned, Board, vector<Board>*, vector<Board>*, vector<Board>*);
 
-void formVertexes(Board, vector<Board>*, vector<Board>*);
-
-unsigned calcH(vector<Cell>, vector<checker>*);
+void formVertexes(Board, vector<Board>*, vector<Board>*, vector<Board>*);
 
 #endif //KADRIL_KUZNECHEKOV_HEADER_H
