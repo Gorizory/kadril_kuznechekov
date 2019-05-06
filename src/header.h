@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
+#include <limits>
 
 using namespace std;
 
@@ -39,11 +40,9 @@ public:
 
     Board(vector<checker>, vector<checker>*);
 
-    Board(Board*);
-
     ~Board();
 
-    bool operator==(Board);
+    bool operator==(Board*);
 
     vector<Cell> getBoard();
 
@@ -66,10 +65,10 @@ public:
     unsigned calcH();
 };
 
-Board formVertex(unsigned, unsigned, Board);
+Board* formVertex(unsigned, unsigned, Board*);
 
-void addVertex(unsigned, unsigned, Board, vector<Board>*, vector<Board>*, vector<Board>*);
+void addVertex(unsigned, unsigned, Board*, vector<Board*>*, vector<Board*>*);
 
-void formVertexes(Board, vector<Board>*, vector<Board>*, vector<Board>*);
+void formVertexes(Board*, vector<Board*>*, vector<Board*>*);
 
 #endif //KADRIL_KUZNECHEKOV_HEADER_H

@@ -28,10 +28,10 @@ Board::~Board() {
     board.clear();
 }
 
-bool Board::operator==(Board b) {
+bool Board::operator==(Board* b) {
     bool equal = true;
     for (unsigned i = 0; i < board.size(); i++) {
-        if (board[i].getChecker() != b.board[i].getChecker()) {
+        if (board[i].getChecker() != b->board[i].getChecker()) {
             equal = false;
             break;
         }
@@ -47,6 +47,10 @@ void Board::updateF() {
 
 unsigned Board::getF() {
     return f;
+}
+
+unsigned Board::getG() {
+    return g;
 }
 
 unsigned Board::getH() {
@@ -97,6 +101,7 @@ unsigned Board::calcH() {
     if (previous == nullptr) {
         return 0;
     }
+    bool shouldFail = false;
     unsigned centerRow = N / 2 - 1;
     int move1= -1, move2 = -1;
 
@@ -114,7 +119,7 @@ unsigned Board::calcH() {
         for (unsigned i = 0; i < N; i++) {
             if (board[i *  N + j].getChecker() != end->at(i *  N + j)) {
                 if (i == N - 1 || j == N - 1) {
-                    newH += 5000;
+                    shouldFail = true;
                 } else {
                     newH += N;
                 }
@@ -124,9 +129,9 @@ unsigned Board::calcH() {
 
     if (move1 / N != move2 / N) {
         if (move1 % N != centerRow) {
-            newH += 5000;
+            shouldFail = true;
         } else {
-            newH += 500;
+            newH += numeric_limits<unsigned int>::max() / 4;
         }
     }
 
@@ -212,7 +217,7 @@ unsigned Board::calcH() {
 //        h += minDist;
 //    }
 
-    return newH;
+    return !shouldFail ? newH : numeric_limits<unsigned int>::max() / 2;
 }
 
 bool checkEnd(Board *board) {
@@ -225,29 +230,29 @@ bool checkEnd(Board *board) {
     return true;
 }
 
-Board formVertex(unsigned i, unsigned j, Board b) {
-    Board newBoard(b);
+Board* formVertex(unsigned i, unsigned j, Board* b) {
+    auto newBoard = new Board(*b);
 
-    newBoard.setCell(i, b.getBoard()[j].getChecker());
-    newBoard.setCell(j, b.getBoard()[i].getChecker());
+    newBoard->setCell(i, b->getBoard()[j].getChecker());
+    newBoard->setCell(j, b->getBoard()[i].getChecker());
 
-    newBoard.previous = &b;
-    newBoard.updateF();
+    newBoard->previous = b;
+    newBoard->updateF();
 
     return newBoard;
 }
 
-void addVertex(unsigned i, unsigned j, const Board b, vector<Board>* boards, vector<Board> *open, vector<Board> *close) {
-    Board board = formVertex(i, j, b);
+void addVertex(unsigned i, unsigned j, Board* b, vector<Board*> *open, vector<Board*> *close) {
+    Board* board = formVertex(i, j, b);
     bool shouldOpen = true;
-    for (Board _b : *open) {
-        if (_b == board) {
+    for (Board *_b : *open) {
+        if (*board == _b) {
             shouldOpen = false;
             break;
         }
     }
-    for (Board _b : *close) {
-        if (_b == board) {
+    for (Board *_b : *close) {
+        if (*board == _b) {
             shouldOpen = false;
             break;
         }
@@ -257,8 +262,8 @@ void addVertex(unsigned i, unsigned j, const Board b, vector<Board>* boards, vec
     }
 }
 
-void formVertexes(Board b, vector<Board> *boards, vector<Board> *open, vector<Board> *close) {
-    vector<Cell> board = b.getBoard();
+void formVertexes(Board* b, vector<Board*> *open, vector<Board*> *close) {
+    vector<Cell> board = b->getBoard();
 
     auto canJump = [](checker c1, checker c2) -> bool {
         return c1 != c2 && c2 != EMPTY;
@@ -270,44 +275,45 @@ void formVertexes(Board b, vector<Board> *boards, vector<Board> *open, vector<Bo
         if (ch != EMPTY) {
             // step
             if (i / N > 0 && ch == BLACK) {
-                if (b.checkCellEmpty(i - N)) {
-                    addVertex(i, i - N, b, boards, open, close);
+                if (b->checkCellEmpty(i - N)) {
+                    addVertex(i, i - N, b, open, close);
                 }
             }
             if (i / N < N - 1 && ch == WHITE) {
-                if (b.checkCellEmpty(i + N)) {
-                    addVertex(i, i + N, b, boards, open, close);
+                if (b->checkCellEmpty(i + N)) {
+                    addVertex(i, i + N, b, open, close);
                 }
             }
             if (i % N > 0 && ch == BLACK) {
-                if (b.checkCellEmpty(i - 1)) {
-                    addVertex(i, i - 1, b, boards, open, close);
+                if (b->checkCellEmpty(i - 1)) {
+                    addVertex(i, i - 1, b, open, close);
                 }
             }
             if (i % N < N - 1 && ch == WHITE) {
-                if (b.checkCellEmpty(i + 1)) {
-                    addVertex(i, i + 1, b, boards, open, close);
+                if (b->checkCellEmpty(i + 1)) {
+                    addVertex(i, i + 1, b, open, close);
                 }
             }
             // jump
             if (i / N > 1) {
-                if (b.checkCellEmpty(i - 2 * N) && canJump(ch, b.getBoard()[i - N].getChecker())) {
-                    addVertex(i, i - 2 * N, b, boards, open, close);
+                if (b->checkCellEmpty(i - 2 * N) && canJump(ch, b->getBoard()[i - N].getChecker())) {
+                    addVertex(i, i - 2 * N, b, open, close);
                 }
             }
             if (i / N < N - 2) {
-                if (b.checkCellEmpty(i + 2 * N) && canJump(ch, b.getBoard()[i + N].getChecker())) {
-                    addVertex(i, i + 2 * N, b, boards, open, close);
+                if (b->checkCellEmpty(i + 2 * N) && canJump(ch, b->getBoard()[i + N].getChecker())) {
+                    addVertex(i, i + 2 * N, b, open, close);
                 }
             }
             if (i % N > 1) {
-                if (b.checkCellEmpty(i - 2) && canJump(ch, b.getBoard()[i - 1].getChecker())) {
-                    addVertex(i, i - 2, b, boards, open, close);
+                if (b->checkCellEmpty(i - 2) && canJump(ch, b->getBoard()[i - 1].getChecker())) {
+                    addVertex(i, i - 2, b, open, close);
                 }
             }
             if (i % N < N - 2) {
-                if (b.checkCellEmpty(i + 2) && canJump(ch, b.getBoard()[i + 1].getChecker())) {
-                    addVertex(i, i + 2, b, boards, open, close);
+                if (b->checkCellEmpty(i + 2) && canJump(ch, b->getBoard()[i + 1].getChecker())) {
+                    addVertex(i, i + 2, b,
+                            open, close);
                 }
             }
         }
@@ -315,157 +321,155 @@ void formVertexes(Board b, vector<Board> *boards, vector<Board> *open, vector<Bo
 }
 
 int main() {
-    /*
-    vector<checker> start {
-            // 1st row
-            WHITE,
-            WHITE,
-            WHITE,
-            WHITE,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 2nd row
-            WHITE,
-            WHITE,
-            WHITE,
-            WHITE,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 3rd row
-            WHITE,
-            WHITE,
-            WHITE,
-            WHITE,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 4th row
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 5th row
-            WHITE,
-            WHITE,
-            WHITE,
-            BLACK,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 6th row
-            WHITE,
-            WHITE,
-            WHITE,
-            BLACK,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 7th row
-            WHITE,
-            WHITE,
-            WHITE,
-            BLACK,
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            // 8th row
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-    };
-
-    vector<checker> end {
-            // 1st row
-            BLACK,
-            BLACK,
-            BLACK,
-            BLACK,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 2nd row
-            BLACK,
-            BLACK,
-            BLACK,
-            BLACK,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 3rd row
-            BLACK,
-            BLACK,
-            BLACK,
-            BLACK,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 4th row
-            BLACK,
-            BLACK,
-            BLACK,
-            EMPTY,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 5th row
-            BLACK,
-            BLACK,
-            BLACK,
-            WHITE,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 6th row
-            BLACK,
-            BLACK,
-            BLACK,
-            WHITE,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 7th row
-            BLACK,
-            BLACK,
-            BLACK,
-            WHITE,
-            WHITE,
-            WHITE,
-            WHITE,
-            EMPTY,
-            // 8th row
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-            EMPTY,
-    };
-     */
+//    vector<checker> start {
+//            // 1st row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 2nd row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 3rd row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 4th row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 5th row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 6th row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 7th row
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            // 8th row
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//    };
+//
+//    vector<checker> end {
+//            // 1st row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 2nd row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 3rd row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 4th row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            EMPTY,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 5th row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 6th row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 7th row
+//            BLACK,
+//            BLACK,
+//            BLACK,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            WHITE,
+//            EMPTY,
+//            // 8th row
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//            EMPTY,
+//    };
 
     vector<checker> start{
             // 1st row
@@ -557,11 +561,9 @@ int main() {
             EMPTY,
     };
 
-    vector<Board> boards;
-    vector<Board> open;
-    vector<Board> close;
-    boards.emplace_back(start, &end);
-    open.emplace_back(Board (boards[0]));
+    vector<Board*> open;
+    vector<Board*> close;
+    open.emplace_back(new Board(start, &end));
 
     unsigned iteration = 0;
 
@@ -571,7 +573,7 @@ int main() {
         unsigned index = 0;
 
         for (unsigned i = 0; i < open.size(); i++) {
-            Board *b = &open[i];
+            Board *b = open[i];
 
             if (checkEnd(b)) {
                 x = b;
@@ -593,17 +595,16 @@ int main() {
         iteration++;
 
         if (x != nullptr) {
-            x = new Board(*x);
             open.erase(open.begin() + index);
 
-            close.emplace_back(*x);
-            // x->printBoard();
+            close.emplace_back(x);
+            x->printBoard();
 
             if (checkEnd(x)) {
                 break;
             }
 
-            formVertexes(*x, &boards, &open, &close);
+            formVertexes(x, &open, &close);
         } else {
             cout << "No open vertexes" << endl;
             return 1;
@@ -612,17 +613,19 @@ int main() {
 
     cout << "Result:" << endl;
 
-    Board *x = &close[close.size() - 1];
+    Board *x = close[close.size() - 1];
     vector<Board*> result;
-    result.emplace_back(x);
 
     while (x != nullptr) {
-        x->printBoard();
         result.emplace_back(x);
         x = x->previous;
     }
 
-    cout << result.size() << " steps" << endl;
+    for (int i = result.size() - 1; i > -1; i--) {
+        result.at(i)->printBoard();
+    }
+
+    cout << result.size() - 1 << " steps" << endl;
 
     cout << iteration << " iterations" << endl;
 
